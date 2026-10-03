@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AskMe · 问答</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#eef3f8;--card:#ffffff;--text:#333;--text-dim:#777;
+  --border:#d3dce6;--border-light:#e6edf3;--link:#2266cc;
+  --green-btn:#d1eaaa;--green-btn-border:#a9c981;--blue-btn:#5a9fdb;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family: Arial, Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif;min-height:100vh;font-size:13px;}
+body.app{padding-top:52px}
+a{color:var(--link);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+input,textarea{font-family:inherit;font-size:13px;outline:none}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#c4cdd5;border-radius:4px}
+.hidden{display:none !important}
+svg.pixel{image-rendering:pixelated;-ms-interpolation-mode:nearest-neighbor}
+#authScreen{position:fixed;inset:0;background:#eef3f8;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
+.auth-card{width:100%;max-width:420px;background:#fff;padding:30px;border-radius:4px;border:1px solid #d3dce6;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.auth-logo{display:flex;justify-content:center;margin-bottom:28px}
+.auth-tabs{display:flex;border-bottom:1px solid #eee;margin-bottom:22px}
+.auth-tab{flex:1;padding:12px 0;font-size:14px;font-weight:600;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.1s}
+.auth-tab.active{color:#333;border-bottom-color:#333}
+.auth-field{margin-bottom:16px}
+.auth-field label{display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:#555}
+.auth-field input{width:100%;background:#f9fbfc;border:1px solid #c4cdd5;border-radius:3px;padding:11px 12px;color:#333;box-shadow:inset 0 1px 2px rgba(0,0,0,.04);}
+.auth-field input:focus{background:#fff;border-color:#a0b3c6}
+.auth-msg{font-size:12px;margin-top:6px;color:#d9534f;min-height:16px;word-break:break-all}
+.auth-btn{width:100%;height:40px;border-radius:3px;background:linear-gradient(to bottom, #ffffff, #f0f4f8);border:1px solid #b8c4d0;color:#333;font-size:14px;font-weight:700;margin-top:8px;box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,.1);}
+.auth-btn:hover{background:linear-gradient(to bottom, #ffffff, #e2e9f0)}
+.auth-btn:active{box-shadow: inset 0 2px 4px rgba(0,0,0,.15)}
+.auth-switch{text-align:center;font-size:12px;color:#888;margin-top:18px}
+.auth-switch a{color:#333;font-weight:600;cursor:pointer}
+.kubrick{margin-top:36px;text-align:center;font-family:"Courier New",monospace;color:#999;line-height:1.7}
+.kubrick .quote{font-size:13px;font-weight:600}
+.kubrick .author{font-size:12px;font-weight:700;margin-top:8px;letter-spacing:1px}
+.auth-lang{position:fixed;top:16px;right:18px;z-index:1100}
+.topbar{position:fixed;top:0;left:0;right:0;height:52px;z-index:200;display:flex;align-items:center;gap:14px;padding:0 16px;background:linear-gradient(to bottom, #ffffff, #eef3f8);border-bottom:1px solid #c4cdd5;}
+.topbar-logo{display:flex;align-items:center;flex-shrink:0}
+.topbar-search{flex:1;max-width:560px;margin:0 auto;display:flex;height:32px;background:#fff;border:1px solid #c4cdd5;border-radius:3px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.05);}
+.topbar-search input{flex:1;background:none;border:0;color:#333;padding:0 12px;font-size:12.5px}
+.topbar-search input::placeholder{color:#aaa}
+.topbar-search button{width:40px;background:#f0f4f8;color:#666;font-size:13px;border-left:1px solid #c4cdd5}
+.topbar-search button:hover{background:#e2e9f0}
+.top-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.lang-btn{display:flex;align-items:center;gap:4px;height:28px;padding:0 10px;border-radius:3px;background:linear-gradient(to bottom, #ffffff, #f0f4f8);border:1px solid #c4cdd5;font-size:11px;font-weight:600;color:#555;box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,.1);}
+.lang-btn:hover{background:linear-gradient(to bottom, #ffffff, #e2e9f0)}
+.lang-btn:active{box-shadow: inset 0 2px 4px rgba(0,0,0,.15)}
+.user-chip{display:block;border-radius:3px;overflow:hidden;border:1px solid #c4cdd5;box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,.1)}
+.nav-tabs{display:flex;gap:6px;flex-shrink:0}
+.nav-tab{height:32px;padding:0 14px;border-radius:3px;background:linear-gradient(to bottom, #fdfeff, #e8eef5);border:1px solid #a8b6c4;color:#2a3a4a;font-size:12.5px;font-weight:700;box-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 rgba(0,0,0,.05),0 1px 3px rgba(0,0,0,.15),0 2px 4px rgba(0,0,0,.06);transition: all .08s;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.nav-tab:hover{background:linear-gradient(to bottom, #ffffff, #dde6ee)}
+.nav-tab:active{box-shadow:inset 0 2px 4px rgba(0,0,0,.18),inset 0 -1px 0 #fff,0 1px 0 rgba(0,0,0,.05);transform: translateY(1px);}
+.nav-tab.active{background:linear-gradient(to bottom, #d8e6f2, #c5d8e8);border-color:#7a94ac;color:#1a2c3a;box-shadow:inset 0 2px 3px rgba(0,0,0,.12),inset 0 -1px 0 rgba(255,255,255,.5),0 1px 1px rgba(0,0,0,.06);}
+.nav-tab .count{font-size:10px;font-weight:700;background:rgba(0,0,0,.12);padding:0 6px;border-radius:8px;min-width:18px;text-align:center;line-height:15px;height:15px;}
+.nav-tab.active .count{background:rgba(0,0,0,.2);color:#fff}
+.avatar{display:grid;place-items:center;border-radius:3px;color:#fff;font-weight:700;flex-shrink:0;user-select:none;overflow:hidden;line-height:1;border:1px solid rgba(0,0,0,.1);}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.wrap{max-width:1400px;margin:0 auto;padding:20px 20px 60px}
+.page-title{font-size:18px;font-weight:700;margin-bottom:16px;color:#333}
+.empty{text-align:center;padding:50px 20px;color:#aaa;font-size:14px;border:1px dashed #d3dce6;border-radius:4px;background:#fff;}
+.profile-layout{display:flex;gap:24px;align-items:flex-start}
+.profile-sidebar{width:220px;flex-shrink:0;background:#fff;border:1px solid #d3dce6;border-radius:4px;box-shadow: 0 1px 3px rgba(0,0,0,.06);}
+.profile-sidebar-head{padding:16px;text-align:center;border-bottom:1px solid #e6edf3}
+.profile-sidebar-head .avatar{margin:0 auto 10px}
+.profile-sidebar-name{font-size:15px;font-weight:700;color:#333;margin-bottom:8px}
+.profile-sidebar-stats{font-size:11px;color:#777;display:flex;justify-content:center;gap:12px;margin-top:8px}
+.profile-sidebar-bio{padding:12px 16px;font-size:12px;color:#555;line-height:1.5;border-bottom:1px solid #e6edf3;word-break:break-word}
+.profile-sidebar-bio .label{font-size:10px;font-weight:700;color:#999;margin-bottom:4px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.profile-sidebar-bio .edit-bio{font-size:10px;color:var(--link);cursor:pointer;font-weight:600;text-transform:none;}
+.profile-sidebar-bio .edit-bio:hover{text-decoration:underline}
+.profile-sidebar-links{padding:12px 16px;font-size:12px;color:#555}
+.profile-sidebar-links a{display:block;padding:3px 0}
+.profile-sidebar-links .label{font-size:10px;font-weight:700;color:#999;margin-bottom:6px;text-transform:uppercase}
+.btn-follow-green{display:inline-block;width:100%;padding:6px 0;margin-top:6px;background:linear-gradient(to bottom, #e2f0c8, #d1eaaa);border:1px solid var(--green-btn-border);border-radius:3px;color:#4d6b2e;font-size:12px;font-weight:700;text-align:center;box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,.08);}
+.btn-follow-green:hover{background:linear-gradient(to bottom, #d5e8b0, #c5dda0)}
+.btn-follow-green:active{box-shadow: inset 0 2px 4px rgba(0,0,0,.15)}
+.btn-follow-green.following{background:linear-gradient(to bottom, #f0f4f8, #e2e9f0);border-color:#b8c4d0;color:#555}
+.profile-main{flex:1;min-width:0}
+.post{background:#fff;border:1px solid #d3dce6;border-radius:4px;margin-bottom:16px;overflow:hidden;box-shadow: 0 1px 3px rgba(0,0,0,.04);}
+.post-q{padding:12px 14px;display:flex;gap:10px;border-bottom:1px solid #f0f4f8;}
+.post-q-avatar{flex-shrink:0}
+.post-q-content{flex:1;min-width:0}
+.post-q-text{font-size:13px;line-height:1.5;font-weight:700;color:#333;word-break:break-word;white-space:pre-wrap;margin-bottom:4px}
+.post-q-meta{font-size:11px;color:#999}
+.post-q-meta a{color:#777;font-weight:600}
+.post-q-meta a:hover{color:#333}
+.post-q-meta .anon-link{cursor:pointer;color:#999}
+.post-q-meta .anon-link:hover{color:#555;text-decoration:underline}
+.post-a{padding:12px 14px;display:flex;gap:10px;border-top:1px solid #f0f4f8;}
+.post-a:first-of-type{border-top:0}
+.post-a-avatar{flex-shrink:0}
+.post-a-content{flex:1;min-width:0}
+.post-a-text{font-size:13px;line-height:1.5;color:#333;word-break:break-word;white-space:pre-wrap;}
+.post-a.pending .post-a-text{color:#aaa;font-style:italic}
+.post-a-meta{font-size:11px;color:#999;margin-top:6px;line-height:1.7}
+.post-a-meta a.answer-name{color:var(--link);font-weight:600}
+.post-a-meta a.answer-name:hover{color:#1a4f99;text-decoration:underline}
+.post-a-meta .answer-like-btn{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#888;padding:1px 6px;border-radius:3px;margin-left:6px;vertical-align:middle;transition:.1s;}
+.post-a-meta .answer-like-btn:hover{background:#f0f4f8;color:#333}
+.post-a-meta .answer-like-btn.liked{color:#d9534f;font-weight:600}
+.post-a-more{padding:8px 14px;text-align:center;border-top:1px solid #f0f4f8;background:#fafbfc}
+.post-a-more button{font-size:11px;color:var(--link);font-weight:700;padding:4px 12px;border-radius:3px;}
+.post-a-more button:hover{text-decoration:underline}
+.post-foot{display:flex;align-items:center;padding:0 14px;border-top:1px solid #e6edf3;background:#fafbfc;font-size:11px;color:#999;}
+.post-foot button{font-size:11px;color:#666;padding:6px 12px;transition:.1s;border-right:1px solid #e6edf3;display:flex;align-items:center;gap:4px;}
+.post-foot button:last-child{border-right:0}
+.post-foot button:hover{background:#f0f4f8;color:#333}
+.post-foot button:active{box-shadow: inset 0 2px 3px rgba(0,0,0,.1)}
+.post-foot button.liked{color:#d9534f;font-weight:600}
+.post-foot button.self-disabled{color:#ccc;cursor:not-allowed}
+.post-foot button.self-disabled:hover{background:transparent;color:#ccc}
+.post-foot .spacer{flex:1}
+.post-foot .pixel-mini{width:14px;height:14px}
+.answer-box{padding:12px 14px;border-top:1px solid #e6edf3;background:#fafbfc}
+.answer-input{width:100%;background:#fff;border:1px solid #c4cdd5;border-radius:3px;padding:8px 10px;color:#333;resize:vertical;min-height:50px;line-height:1.5;box-shadow:inset 0 1px 2px rgba(0,0,0,.04);font-family:inherit;font-size:12px;}
+.answer-input:focus{border-color:#a0b3c6}
+.answer-row{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+.answer-row button{height:26px;padding:0 14px;border-radius:3px;font-size:11px;font-weight:600;background:linear-gradient(to bottom, #ffffff, #f0f4f8);border:1px solid #c4cdd5;color:#333;box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,.1);}
+.answer-row button:hover{background:linear-gradient(to bottom, #ffffff, #e2e9f0)}
+.answer-row button:active{box-shadow: inset 0 2px 4px rgba(0,0,0,.15)}
+.ask-box{background:#fff;border:1px solid #d3dce6;border-radius:4px;margin-bottom:20px;overflow:hidden;box-shadow: 0 1px 3px rgba(0,0,0,.04);}
+.ask-box-header{padding:8px 12px;background:linear-gradient(to bottom, #f7fafc, #eef3f8);border-bottom:1px solid #e6edf3;font-size:11px;font-weight:700;color:#555;letter-spacing:.3px;}
+.ask-box-header .sub{font-weight:400;color:#999;margin-left:6px}
+.ask-box-body{padding:12px}
+.ask-input{width:100%;background:#fff;border:1px solid #c4cdd5;border-radius:3px;padding:10px 12px;color:#333;resize:vertical;min-height:50px;line-height:1.5;box-shadow:inset 0 1px 2px rgba(0,0,0,.04);font-family:inherit;font-size:13px;}
+.ask-input:focus{border-color:#a0b3c6}
+.ask-input::placeholder{color:#b0b8c0}
+.ask-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:10px;flex-wrap:wrap}
+.ask-anon{display:flex;align-items:center;gap:5px;font-size:11px;color:#777;cursor:pointer;user-select:none}
+.ask-anon input{accent-color:var(--blue-btn)}
+.ask-submit{height:32px;padding:0 22px;border-radius:3px;background:linear-gradient(to bottom, #fdfeff, #e8eef5);border:1px solid #a8b6c4;color:#2a3a4a;font-size:12.5px;font-weight:700;box-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 rgba(0,0,0,.05),0 1px 3px rgba(0,0,0,.15),0 2px 4px rgba(0,0,0,.06);transition: all .08s;}
+.ask-submit:hover{background:linear-gradient(to bottom, #ffffff, #dde6ee)}
+.ask-submit:active{box-shadow:inset 0 2px 4px rgba(0,0,0,.18),inset 0 -1px 0 #fff,0 1px 0 rgba(0,0,0,.05);transform: translateY(1px);}
+.user-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#fff;border:1px solid #d3dce6;border-radius:4px;margin-bottom:10px;cursor:pointer;transition:.1s;box-shadow: 0 1px 2px rgba(0,0,0,.04);}
+.user-row:hover{background:#fafbfc;border-color:#b8c4d0}
+.user-row-info{flex:1;min-width:0}
+.user-row-name{font-size:13px;font-weight:700;color:#333}
+.user-row-sub{font-size:11px;color:#888;margin-top:2px}
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:900;display:grid;place-items:center;padding:24px}
+.modal{background:#fff;border:1px solid #d3dce6;border-radius:4px;padding:20px;max-width:400px;width:100%;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.modal h3{font-size:14px;font-weight:700;margin-bottom:8px;color:#333}
+.modal p{font-size:13px;color:#666;line-height:1.5;margin-bottom:16px}
+.modal-textarea{width:100%;background:#f9fbfc;border:1px solid #c4cdd5;border-radius:3px;padding:10px 12px;color:#333;font-size:13px;line-height:1.5;resize:vertical;min-height:100px;font-family:inherit;box-shadow:inset 0 1px 2px rgba(0,0,0,.04);margin-bottom:16px;}
+.modal-textarea:focus{background:#fff;border-color:#a0b3c6}
+.modal-actions{display:flex;justify-content:flex-end;gap:6px}
+.modal-actions button{height:30px;padding:0 16px;border-radius:3px;font-size:12px;font-weight:600;box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,.1);}
+.modal-ok{background:linear-gradient(to bottom, #ffffff, #f0f4f8);border:1px solid #b8c4d0;color:#333}
+.modal-ok:hover{background:linear-gradient(to bottom, #ffffff, #e2e9f0)}
+.modal-ok:active{box-shadow: inset 0 2px 4px rgba(0,0,0,.15)}
+.modal-cancel{background:#fff;border:1px solid #ddd;color:#777}
+.modal-cancel:hover{background:#f5f5f5}
+.pixel-overlay{position:fixed;inset:0;z-index:998;pointer-events:none;display:grid;place-items:center;opacity:0;transition:opacity .2s;}
+.pixel-overlay.show{opacity:1}
+.pixel-overlay svg{image-rendering:pixelated;filter: drop-shadow(0 4px 12px rgba(0,0,0,.25));animation: pixelPop .35s cubic-bezier(.34,1.56,.64,1);}
+@keyframes pixelPop{0%{transform:scale(.3) rotate(-8deg);opacity:0}60%{transform:scale(1.15) rotate(2deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+#toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,16px);background:#333;color:#fff;padding:8px 18px;border-radius:3px;font-size:12px;font-weight:600;z-index:999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;box-shadow:0 4px 12px rgba(0,0,0,.2);}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:900px){.wrap{padding:16px 12px}.profile-layout{flex-direction:column}.profile-sidebar{width:100%}}
+@media(max-width:600px){.topbar-search{display:none}.kubrick .quote{font-size:11px}}
+</style>
+</head>
+<body>
+
+<div id="authScreen">
+  <div class="auth-lang">
+    <button class="lang-btn" id="authLangBtn"><span>🌐</span><span id="authLangText">EN</span></button>
+  </div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="200" height="76" viewBox="0 0 200 76" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M28 40 Q100 8 172 40 Q100 68 28 40 Z" fill="url(#bGrad)" stroke="#333" stroke-width="1.5"/>
+        <path d="M44 40 Q100 26 156 40" stroke="rgba(0,0,0,.15)" stroke-width="1" fill="none"/>
+        <text x="100" y="46" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="900" fill="#fff" letter-spacing="-1">AskMe</text>
+        <path d="M8 56 Q28 46 48 54 T88 52 T128 56 T168 50 T196 56" stroke="#3ad6ff" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".85"/>
+        <path d="M0 64 Q24 56 48 62 T96 60 T144 64 T192 58" stroke="#3ad6ff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".45"/>
+        <defs><linearGradient id="bGrad" x1="0" y1="0" x2="200" y2="0"><stop offset="0" stop-color="#ff2d55"/><stop offset="1" stop-color="#ff5e7a"/></linearGradient></defs>
+      </svg>
+    </div>
+    <div class="auth-tabs" id="authTabs">
+      <button class="auth-tab active" data-tab="login" data-i18n="login">登录</button>
+      <button class="auth-tab" data-tab="register" data-i18n="register">注册</button>
+    </div>
+    <form id="loginForm">
+      <div class="auth-field"><label data-i18n="username">用户名</label><input type="text" name="username" data-i18n-ph="usernamePh" placeholder="输入用户名" autocomplete="username"></div>
+      <div class="auth-field"><label data-i18n="password">密码</label><input type="password" name="password" data-i18n-ph="passwordPh" placeholder="输入密码" autocomplete="current-password"></div>
+      <div class="auth-msg" id="loginMsg"></div>
+      <button type="submit" class="auth-btn" data-i18n="enter">进入 AskMe</button>
+    </form>
+    <form id="registerForm" class="hidden">
+      <div class="auth-field"><label data-i18n="username">用户名</label><input type="text" name="username" data-i18n-ph="regNamePh" placeholder="2-16 个字符" autocomplete="username"></div>
+      <div class="auth-field"><label data-i18n="password">密码</label><input type="password" name="password" data-i18n-ph="regPwdPh" placeholder="至少 4 位" autocomplete="new-password"></div>
+      <div class="auth-field"><label data-i18n="confirmPwd">确认密码</label><input type="password" name="confirm" data-i18n-ph="confirmPh" placeholder="再输一次" autocomplete="new-password"></div>
+      <div class="auth-msg" id="registerMsg"></div>
+      <button type="submit" class="auth-btn" data-i18n="createAccount">创建账号</button>
+    </form>
+    <div class="auth-switch">
+      <span id="switchHint" data-i18n="noAccount">还没有账号？</span>
+      <a id="switchLink" data-i18n="registerNow">立即注册</a>
+    </div>
+  </div>
+  <div class="kubrick">
+    <div class="quote">"In an infinite and eternal universe,<br>the point is, anything is possible."</div>
+    <div class="author">Stanley Kubrick</div>
+  </div>
+</div>
+
+<header class="topbar hidden" id="topbar">
+  <a class="topbar-logo" href="#/">
+    <svg width="92" height="34" viewBox="0 0 92 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 17 Q46 5 80 17 Q46 29 12 17 Z" fill="url(#bGrad2)" stroke="#333" stroke-width="1.2"/>
+      <text x="46" y="21.5" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="900" fill="#fff" letter-spacing="-0.6">AskMe</text>
+      <path d="M4 25 Q20 20 36 24 T68 23 T88 25" stroke="#3ad6ff" stroke-width="2" fill="none" stroke-linecap="round" opacity=".9"/>
+      <defs><linearGradient id="bGrad2" x1="0" y1="0" x2="92" y2="0"><stop offset="0" stop-color="#ff2d55"/><stop offset="1" stop-color="#ff5e7a"/></linearGradient></defs>
+    </svg>
+  </a>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-action="switch-tab" data-tab="public"><span data-i18n="navPublic">公众问答区</span></button>
+    <button class="nav-tab" data-action="switch-tab" data-tab="private"><span data-i18n="navPrivate">个人问答区</span></button>
+  </div>
+  <form class="topbar-search" id="searchForm">
+    <input id="searchInput" data-i18n-ph="searchPh" placeholder="搜索用户…" autocomplete="off">
+    <button type="submit">🔍</button>
+  </form>
+  <div class="top-right">
+    <button class="lang-btn" id="langBtn"><span>🌐</span><span id="langText">EN</span></button>
+    <a class="user-chip" id="userChip" href="#/"></a>
+  </div>
+</header>
+
+<main id="app" class="hidden"></main>
+<div id="toast"></div>
+
+<script>
+/* ============ Supabase 初始化（变量名改成 sb，避开库自带的 supabase 变量） ============ */
+const SUPABASE_URL = 'https://piklfjxtnmaguuhmwojr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpa2xmanh0bm1hZ3V1aG13b2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTY3ODMsImV4cCI6MjEwNjU3Mjc4M30.TurRQOFUs-mlwSiUoYxAA7opW-J7f9kevNZKv_TfO7M';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const CONFIG = { ALLOW_POST_IMAGE: false, ALLOW_AVATAR_UPLOAD: true };
+
+/* ============ 像素图标 ============ */
+const PIXEL_SMILE_MINI = `<svg class="pixel pixel-mini" viewBox="0 0 8 8" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="2" height="2" fill="#d9534f"/><rect x="5" y="1" width="2" height="2" fill="#d9534f"/><rect x="1" y="4" width="1" height="1" fill="#d9534f"/><rect x="2" y="5" width="1" height="1" fill="#d9534f"/><rect x="3" y="5" width="2" height="1" fill="#d9534f"/><rect x="5" y="5" width="1" height="1" fill="#d9534f"/><rect x="6" y="4" width="1" height="1" fill="#d9534f"/></svg>`;
+const PIXEL_HEART_MINI = `<svg class="pixel pixel-mini" viewBox="0 0 7 7" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="0" width="2" height="1" fill="#d9534f"/><rect x="4" y="0" width="2" height="1" fill="#d9534f"/><rect x="0" y="1" width="7" height="1" fill="#d9534f"/><rect x="0" y="2" width="7" height="1" fill="#d9534f"/><rect x="1" y="3" width="5" height="1" fill="#d9534f"/><rect x="2" y="4" width="3" height="1" fill="#d9534f"/><rect x="3" y="5" width="1" height="1" fill="#d9534f"/></svg>`;
+const PIXEL_SMILE_LARGE = `<svg class="pixel" width="160" height="160" viewBox="0 0 16 16" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="12" height="12" fill="#ffd93b"/><rect x="1" y="3" width="14" height="10" fill="#ffd93b"/><rect x="3" y="1" width="10" height="14" fill="#ffd93b"/><rect x="4" y="5" width="2" height="3" fill="#333"/><rect x="10" y="5" width="2" height="3" fill="#333"/><rect x="4" y="10" width="1" height="1" fill="#333"/><rect x="5" y="11" width="6" height="1" fill="#333"/><rect x="11" y="10" width="1" height="1" fill="#333"/></svg>`;
+const PIXEL_HEART_LARGE = `<svg class="pixel" width="160" height="160" viewBox="0 0 14 14" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="1" width="4" height="1" fill="#ff5e7a"/><rect x="8" y="1" width="4" height="1" fill="#ff5e7a"/><rect x="1" y="2" width="12" height="1" fill="#ff5e7a"/><rect x="1" y="3" width="12" height="1" fill="#ff5e7a"/><rect x="1" y="4" width="12" height="1" fill="#ff5e7a"/><rect x="2" y="5" width="10" height="1" fill="#ff5e7a"/><rect x="3" y="6" width="8" height="1" fill="#ff5e7a"/><rect x="4" y="7" width="6" height="1" fill="#ff5e7a"/><rect x="5" y="8" width="4" height="1" fill="#ff5e7a"/><rect x="6" y="9" width="2" height="1" fill="#ff5e7a"/><rect x="6" y="10" width="2" height="1" fill="#ff5e7a"/></svg>`;
+
+/* ============ i18n ============ */
+const I18N = {
+  zh: { login:'登录', register:'注册', username:'用户名', password:'密码', confirmPwd:'确认密码', usernamePh:'输入用户名', passwordPh:'输入密码', regNamePh:'2-16 个字符', regPwdPh:'至少 4 位', confirmPh:'再输一次', enter:'进入 AskMe', createAccount:'创建账号', noAccount:'还没有账号？', hasAccount:'已经有账号了？', registerNow:'立即注册', goLogin:'去登录', searchPh:'搜索用户…', home:'首页', profile:'主页', publicAsk:'公众提问', publicAskSub:'所有人可见，任何人都能回答', privateAsk:'向 @{name} 提问', privateAskSub:'所有人可见，只有 TA 能回答', askPlaceholder:'写下你想问的问题…', anon:'匿名提问', ask:'发送', pending:'暂时无人回答', answerPlaceholder:'写下你的回答…', cancel:'取消', submitAnswer:'发布回答', anonymous:'匿名', noPosts:'还没有问答，来问第一个问题吧', noSearch:'没有找到相关用户', deletePost:'删除', confirmDelete:'确定要删除这条问答吗？', follow:'关注', following:'已关注', unfollowed:'已取消关注', fans:'粉丝', posts:'问答', followingCount:'关注中', pleaseLoginFirst:'请先登录', postEmpty:'问题不能为空', answerEmpty:'回答不能为空', postPublished:'问题已发布', answerPublished:'回答已发布', deleted:'已删除', userNotFound:'用户不存在', pleaseFillAll:'请填写完整', userNotExist:'用户不存在', wrongPwd:'密码错误', nameLen:'用户名 2-16 字符', pwdLen:'密码至少 4 位', pwdMismatch:'两次密码不一致', nameTaken:'用户名已被占用', welcome:'欢迎加入 AskMe 🎉', langSwitch:'EN', answeredBy:'回答了', you:'（我）', changeAvatar:'更换头像', avatarUpdated:'头像已更新', smile: '爱心', share: '分享', bio: '个人简介', editBio: '编辑', bioEmpty: '（暂无简介）', bioEditTitle: '编辑个人简介', bioUpdated: '简介已更新', anonBlockTitle: '无法查看主页', anonBlockMsg: '该提问者选择了匿名提问，无法进入其个人主页。', heartToast: '爱心 +1', smileToast: '微笑 +1', navPublic: '公众问答区', navPrivate: '个人问答区', emptyPublicHome: '还没有公众问答，来问第一个问题吧', emptyPrivateHome: '还没有个人问答', publicBadge:'公众问答', personalBadge:'个人问答', cannotLikeSelf:'不能给自己点赞', alreadyAnsweredByMe:'你已经回答过这条问题了', viewAllAnswers:'查看全部 {n} 条回答', collapseAnswers:'收起回答', },
+  en: { login:'Log in', register:'Sign up', username:'Username', password:'Password', confirmPwd:'Confirm', usernamePh:'Enter username', passwordPh:'Enter password', regNamePh:'2-16 characters', regPwdPh:'At least 4 chars', confirmPh:'Repeat password', enter:'Enter AskMe', createAccount:'Create account', noAccount:"Don't have an account?", hasAccount:'Already have an account?', registerNow:'Sign up', goLogin:'Log in', searchPh:'Search users…', home:'Home', profile:'Profile', publicAsk:'Public question', publicAskSub:'Visible to everyone, anyone can answer', privateAsk:'Ask @{name}', privateAskSub:'Visible to everyone, only they can answer', askPlaceholder:'Type your question…', anon:'Ask anonymously', ask:'Send', pending:'No answer yet', answerPlaceholder:'Write your answer…', cancel:'Cancel', submitAnswer:'Publish answer', anonymous:'Anonymous', noPosts:'No Q&A yet. Be the first to ask.', noSearch:'No matching users', deletePost:'Delete', confirmDelete:'Delete this Q&A?', follow:'Follow', following:'Following', unfollowed:'Unfollowed', fans:'fans', posts:'Q&A', followingCount:'Following', pleaseLoginFirst:'Please log in first', postEmpty:'Question cannot be empty', answerEmpty:'Answer cannot be empty', postPublished:'Question posted', answerPublished:'Answer published', deleted:'Deleted', userNotFound:'User not found', pleaseFillAll:'Please fill in all fields', userNotExist:'User not found', wrongPwd:'Incorrect password', nameLen:'Username must be 2-16 chars', pwdLen:'Password must be at least 4 chars', pwdMismatch:'Passwords do not match', nameTaken:'Username already taken', welcome:'Welcome to AskMe 🎉', langSwitch:'中文', answeredBy:'answered', you:'(me)', changeAvatar:'Change avatar', avatarUpdated:'Avatar updated', smile: 'Smile', share: 'Share', bio: 'Bio', editBio: 'Edit', bioEmpty: '(No bio yet)', bioEditTitle: 'Edit bio', bioUpdated: 'Bio updated', anonBlockTitle: 'Profile unavailable', anonBlockMsg: 'This user asked anonymously, so their profile cannot be viewed.', heartToast: 'Heart +1', smileToast: 'Smile +1', navPublic: 'Public Q&A', navPrivate: 'Personal Q&A', emptyPublicHome: 'No public Q&A yet', emptyPrivateHome: 'No personal Q&A yet', publicBadge:'Public', personalBadge:'Personal', cannotLikeSelf:"Can't like your own post", alreadyAnsweredByMe:'You have already answered this question', viewAllAnswers:'View all {n} answers', collapseAnswers:'Collapse', }
+};
+let LANG = localStorage.getItem('askme_lang') || 'zh';
+function t(k, vars) { const d = I18N[LANG] || I18N.zh; let s = d[k] != null ? d[k] : (I18N.zh[k] != null ? I18N.zh[k] : k); if (vars) for (const kk in vars) s = s.replace('{'+kk+'}', vars[kk]); return s; }
+function applyLang() { document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en'; document.title = LANG === 'zh' ? 'AskMe · 问答' : 'AskMe · Q&A'; document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n)); document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh)); const next = LANG === 'zh' ? 'EN' : '中文'; const lt = document.getElementById('langText'); if (lt) lt.textContent = next; const alt = document.getElementById('authLangText'); if (alt) alt.textContent = next; if (isLoggedIn()) render(); }
+function toggleLang() { LANG = LANG === 'zh' ? 'en' : 'zh'; localStorage.setItem('askme_lang', LANG); applyLang(); }
+
+/* ============ 工具 ============ */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hashCode = s => { let h=0; s=String(s); for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0;} return Math.abs(h); };
+const uid = p => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+function timeAgo(ts) { const d = Date.now() - ts, MIN=6e4, H=36e5, D=864e5, en = LANG==='en'; if (d < MIN) return en ? 'just now' : '刚刚'; if (d < H) { const n=Math.floor(d/MIN); return en?`${n}m ago`:`${n} 分钟前`; } if (d < D) { const n=Math.floor(d/H); return en?`${n}h ago`:`${n} 小时前`; } if (d < D*30) { const n=Math.floor(d/D); return en?`${n}d ago`:`${n} 天前`; } if (d < D*365) { const n=Math.floor(d/(D*30)); return en?`${n}mo ago`:`${n} 个月前`; } const n=Math.floor(d/(D*365)); return en?`${n}y ago`:`${n} 年前`; }
+function avatarStyle(id) { const h = hashCode(id) % 360; return `background:linear-gradient(135deg,hsl(${h} 60% 45%),hsl(${(h+40)%360} 60% 30%))`; }
+function avatarHTML(user, size = 36) { if (!user) user = { id:'ghost', name:'?' }; const inner = user.avatar ? `<img src="${esc(user.avatar)}" alt="">` : esc((user.name||'?')[0]); return `<div class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.42)}px;${user.avatar?'':avatarStyle(user.id)}">${inner}</div>`; }
+let toastTimer;
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1800); }
+function pixelPopover(isHeart) { const el = document.createElement('div'); el.className = 'pixel-overlay'; el.innerHTML = isHeart ? PIXEL_HEART_LARGE : PIXEL_SMILE_LARGE; document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('show')); setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 900); }
+function confirmModal(title, text) { return new Promise(resolve => { const mask = document.createElement('div'); mask.className = 'modal-mask'; mask.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="modal-actions"><button class="modal-cancel">${esc(t('cancel'))}</button><button class="modal-ok">OK</button></div></div>`; mask.querySelector('.modal-cancel').addEventListener('click', () => { mask.remove(); resolve(false); }); mask.querySelector('.modal-ok').addEventListener('click', () => { mask.remove(); resolve(true); }); document.body.appendChild(mask); }); }
+function infoModal(title, text) { return new Promise(resolve => { const mask = document.createElement('div'); mask.className = 'modal-mask'; mask.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="modal-actions"><button class="modal-ok">OK</button></div></div>`; mask.querySelector('.modal-ok').addEventListener('click', () => { mask.remove(); resolve(); }); document.body.appendChild(mask); }); }
+function bioEditModal(initial) { return new Promise(resolve => { const mask = document.createElement('div'); mask.className = 'modal-mask'; mask.innerHTML = `<div class="modal"><h3>${esc(t('bioEditTitle'))}</h3><textarea class="modal-textarea" maxlength="2000">${esc(initial || '')}</textarea><div class="modal-actions"><button class="modal-cancel">${esc(t('cancel'))}</button><button class="modal-ok">OK</button></div></div>`; const ta = mask.querySelector('.modal-textarea'); setTimeout(() => ta.focus(), 50); mask.querySelector('.modal-cancel').addEventListener('click', () => { mask.remove(); resolve(null); }); mask.querySelector('.modal-ok').addEventListener('click', () => { const v = ta.value; mask.remove(); resolve(v); }); document.body.appendChild(mask); }); }
+
+/* ============ 数据层 ============ */
+let db_data = { users: [], posts: [], follows: [] };
+let currentUser_ = null;
+
+async function fetchAll() {
+  const [u, p, f] = await Promise.all([
+    sb.from('user_profiles').select('*'),
+    sb.from('posts').select('*'),
+    sb.from('follows').select('*')
+  ]);
+  if (u.error) throw u.error;
+  if (p.error) throw p.error;
+  if (f.error) throw f.error;
+  db_data.users = u.data || [];
+  db_data.posts = (p.data || []).map(x => ({ ...x, userId: x.user_id, isPublic: x.is_public, askedBy: x.asked_by, likedBy: x.liked_by || [] }));
+  db_data.follows = (f.data || []).map(x => ({ id: x.id, followerId: x.follower_id, followingId: x.following_id, ts: x.ts }));
+}
+
+const currentUser = () => currentUser_;
+const getUser = id => db_data.users.find(u => u.id === id) || null;
+const isLoggedIn = () => !!currentUser_;
+const publicPosts  = () => db_data.posts.filter(p => p.isPublic).sort((a,b) => b.ts - a.ts);
+const privatePosts = () => db_data.posts.filter(p => !p.isPublic).sort((a,b) => b.ts - a.ts);
+const postsByUser = userId => db_data.posts.filter(p => p.userId === userId || p.askedBy === userId).sort((a,b) => b.ts - a.ts);
+const isFollowing = userId => { const me = currentUser(); return me ? db_data.follows.some(f => f.followerId === me.id && f.followingId === userId) : false; };
+const fansCount = userId => db_data.follows.filter(f => f.followingId === userId).length;
+let homeTab = 'public';
+const expandedPosts = new Set();
+
+function parseRoute() { const raw = location.hash.slice(1) || '/'; const [path, qs] = raw.split('?'); return { parts: path.split('/').filter(Boolean).map(decodeURIComponent), q: new URLSearchParams(qs || '') }; }
+function go(hash) { location.hash = hash; }
+
+/* ============ 登录注册 ============ */
+function showApp() { $('#authScreen').classList.add('hidden'); $('#topbar').classList.remove('hidden'); $('#app').classList.remove('hidden'); document.body.classList.add('app'); }
+function showAuth() { $('#authScreen').classList.remove('hidden'); $('#topbar').classList.add('hidden'); $('#app').classList.add('hidden'); document.body.classList.remove('app'); $('#loginForm')?.reset(); $('#registerForm')?.reset(); $('#loginMsg').textContent = ''; $('#registerMsg').textContent = ''; applyLang(); }
+document.getElementById('authTabs').addEventListener('click', e => { const tab = e.target.closest('.auth-tab'); if (!tab) return; const isLogin = tab.dataset.tab === 'login'; document.querySelectorAll('.auth-tab').forEach(x => x.classList.toggle('active', x === tab)); document.getElementById('loginForm').classList.toggle('hidden', !isLogin); document.getElementById('registerForm').classList.toggle('hidden', isLogin); document.getElementById('switchHint').textContent = isLogin ? t('noAccount') : t('hasAccount'); document.getElementById('switchLink').textContent = isLogin ? t('registerNow') : t('goLogin'); });
+document.getElementById('switchLink').addEventListener('click', () => { const loginActive = document.querySelector('.auth-tab[data-tab="login"]').classList.contains('active'); const target = loginActive ? 'register' : 'login'; document.querySelectorAll('.auth-tab').forEach(x => x.classList.toggle('active', x.dataset.tab === target)); document.getElementById('loginForm').classList.toggle('hidden', target === 'register'); document.getElementById('registerForm').classList.toggle('hidden', target === 'login'); document.getElementById('switchHint').textContent = target === 'login' ? t('noAccount') : t('hasAccount'); document.getElementById('switchLink').textContent = target === 'login' ? t('registerNow') : t('goLogin'); });
+
+document.getElementById('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const name = (fd.get('username')||'').trim();
+  const pwd = (fd.get('password')||'').toString();
+  const msg = document.getElementById('loginMsg');
+  if (!name || !pwd) { msg.textContent = t('pleaseFillAll'); return; }
+  msg.textContent = '登录中…';
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email: name + '@askme.local', password: pwd });
+    if (error) throw error;
+    const { data: profile, error: pe } = await sb.from('user_profiles').select('*').eq('id', data.user.id).single();
+    if (pe) throw pe;
+    currentUser_ = { id: data.user.id, name: profile.name, avatar: profile.avatar || '', bio: profile.bio || '', joined: profile.joined };
+    localStorage.setItem('askme_user', JSON.stringify(currentUser_));
+    msg.textContent = '';
+    await fetchAll();
+    showApp(); if (!location.hash) location.hash = '#/'; render();
+  } catch (err) {
+    msg.textContent = '登录失败：' + (err.message || JSON.stringify(err));
+    console.error(err);
+  }
+});
+
+document.getElementById('registerForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const name = (fd.get('username')||'').trim();
+  const pwd = (fd.get('password')||'').toString();
+  const confirm = (fd.get('confirm')||'').toString();
+  const msg = document.getElementById('registerMsg');
+  if (name.length < 2 || name.length > 16) { msg.textContent = t('nameLen'); return; }
+  if (pwd.length < 4) { msg.textContent = t('pwdLen'); return; }
+  if (pwd !== confirm) { msg.textContent = t('pwdMismatch'); return; }
+  msg.textContent = '注册中…';
+  try {
+    const { data: existing } = await sb.from('user_profiles').select('id').eq('name', name).maybeSingle();
+    if (existing) { msg.textContent = t('nameTaken'); return; }
+
+    const { data, error } = await sb.auth.signUp({ email: name + '@askme.local', password: pwd });
+    if (error) throw error;
+    if (!data.user) throw new Error('注册失败，请检查 Supabase 的 Confirm email 是否已关闭');
+
+    const { error: pe } = await sb.from('user_profiles').insert({ id: data.user.id, name, avatar: '', bio: '', joined: Date.now() });
+    if (pe) throw pe;
+
+    currentUser_ = { id: data.user.id, name, avatar: '', bio: '', joined: Date.now() };
+    localStorage.setItem('askme_user', JSON.stringify(currentUser_));
+    msg.textContent = '';
+    await fetchAll();
+    showApp(); location.hash = '#/'; render(); toast(t('welcome'));
+  } catch (err) {
+    msg.textContent = '注册失败：' + (err.message || JSON.stringify(err));
+    console.error(err);
+  }
+});
+
+/* ============ 视图 ============ */
+function answerHTML(p, a) { const me = currentUser(); const ansUser = getUser(a.userId) || { name: '?' }; const ansLiked = me ? (a.likedBy || []).includes(me.id) : false; return `<div class="post-a"><div class="post-a-avatar">${avatarHTML(ansUser, 36)}</div><div class="post-a-content"><div class="post-a-text">${esc(a.content)}</div><div class="post-a-meta"><a class="answer-name" href="#/u/${ansUser.id}">${esc(ansUser.name)}</a> ${esc(t('answeredBy'))} · ${timeAgo(a.ts)}<button class="answer-like-btn" data-action="like-answer" data-pid="${p.id}" data-aid="${a.id}" class="${ansLiked?'liked':''}">${PIXEL_HEART_MINI}<span>${a.likes||0}</span></button></div></div></div>`; }
+function postHTML(p) {
+  const owner = getUser(p.userId) || { name: '?' };
+  const asker = p.anonymous || !p.askedBy ? null : getUser(p.askedBy);
+  const me = currentUser();
+  const isPublic = !!p.isPublic;
+  const answers = p.answers || [];
+  let canAnswer = false;
+  if (me) { if (isPublic) canAnswer = (me.id !== p.askedBy) && !answers.some(a => a.userId === me.id); else canAnswer = (me.id === p.userId) && !answers.some(a => a.userId === me.id); }
+  let askerAvatarHTML;
+  if (asker) askerAvatarHTML = avatarHTML(asker, 36);
+  else askerAvatarHTML = `<div class="avatar" data-action="anon-block" style="width:36px;height:36px;background:#eee;color:#999;font-size:14px;border:1px solid #ddd;cursor:pointer;" title="${esc(t('anonymous'))}">?</div>`;
+  const askerMeta = asker ? `<a href="#/u/${asker.id}">${esc(asker.name)}</a>` : `<span class="anon-link" data-action="anon-block">${esc(t('anonymous'))}</span>`;
+  const qSection = `<div class="post-q"><div class="post-q-avatar">${askerAvatarHTML}</div><div class="post-q-content"><div class="post-q-text">${esc(p.question)}</div><div class="post-q-meta">${askerMeta} · ${timeAgo(p.ts)}</div></div></div>`;
+  const expanded = expandedPosts.has(p.id);
+  const showAll = expanded || answers.length <= 2;
+  const visibleAnswers = showAll ? answers : answers.slice(0, 2);
+  let answersHTML = visibleAnswers.map(a => answerHTML(p, a)).join('');
+  if (isPublic && answers.length > 2) { if (expanded) answersHTML += `<div class="post-a-more"><button data-action="collapse-post" data-pid="${p.id}">${esc(t('collapseAnswers'))}</button></div>`; else answersHTML += `<div class="post-a-more"><button data-action="expand-post" data-pid="${p.id}">${esc(t('viewAllAnswers', {n: answers.length}))}</button></div>`; }
+  if (answers.length === 0) { if (canAnswer) { answersHTML = `<div class="answer-box"><textarea class="answer-input" data-answer-input="${p.id}" placeholder="${esc(t('answerPlaceholder'))}"></textarea><div class="answer-row"><button class="answer-ok" data-action="answer-submit" data-pid="${p.id}">${esc(t('submitAnswer'))}</button></div></div>`; } else { answersHTML = `<div class="post-a pending"><div class="post-a-content"><div class="post-a-text">${esc(t('pending'))}</div></div></div>`; } } else if (canAnswer) { answersHTML += `<div class="answer-box"><textarea class="answer-input" data-answer-input="${p.id}" placeholder="${esc(t('answerPlaceholder'))}"></textarea><div class="answer-row"><button class="answer-ok" data-action="answer-submit" data-pid="${p.id}">${esc(t('submitAnswer'))}</button></div></div>`; }
+  const liked = me ? (p.likedBy || []).includes(me.id) : false;
+  const isSelfPost = me && me.id === p.userId;
+  const icon = LANG === 'zh' ? PIXEL_HEART_MINI : PIXEL_SMILE_MINI;
+  const label = t('smile');
+  const selfClass = isSelfPost ? 'self-disabled' : '';
+  const selfAttr = isSelfPost ? 'data-self="1"' : '';
+  const foot = `<div class="post-foot"><button data-action="share-post" data-pid="${p.id}">${esc(t('share'))}</button><button data-action="smile-post" data-pid="${p.id}" ${selfAttr} class="${liked?'liked':''} ${selfClass}">${icon}<span>${label}</span>${p.likes ? `<span style="font-weight:400;margin-left:2px">${p.likes}</span>` : ''}</button><span class="spacer"></span>${isSelfPost && !isPublic ? `<button data-action="delete-post" data-pid="${p.id}" style="border-left:1px solid #e6edf3;color:#d9534f;">${esc(t('deletePost'))}</button>` : ''}</div>`;
+  return `<div class="post" id="post-${p.id}">${qSection}${answersHTML}${foot}</div>`;
+}
+function renderHome() {
+  const me = currentUser();
+  const list = homeTab === 'private' ? privatePosts() : publicPosts();
+  const showAskBox = me && homeTab === 'public';
+  const emptyMsg = homeTab === 'private' ? t('emptyPrivateHome') : t('emptyPublicHome');
+  return `<div class="wrap"><div style="font-size:16px;font-weight:700;margin-bottom:16px;">AskMe</div>${showAskBox ? `<div class="ask-box"><div class="ask-box-header">${esc(t('publicAsk'))}<span class="sub">${esc(t('publicAskSub'))}</span></div><div class="ask-box-body"><textarea class="ask-input" id="homeAskInput" placeholder="${esc(t('askPlaceholder'))}"></textarea><div class="ask-row"><label class="ask-anon"><input type="checkbox" id="homeAskAnon"> ${esc(t('anon'))}</label><button class="ask-submit" id="homeAskSubmit">${esc(t('ask'))}</button></div></div></div>` : ''}${list.length ? list.map(p => postHTML(p)).join('') : `<div class="empty">${esc(emptyMsg)}</div>`}</div>`;
+}
+function renderProfile(userId) {
+  const u = getUser(userId);
+  if (!u) return `<div class="wrap"><div class="empty">${esc(t('userNotFound'))}</div></div>`;
+  const me = currentUser();
+  const isMe = me && me.id === u.id;
+  const following = isFollowing(u.id);
+  const posts = postsByUser(u.id);
+  const followingUsers = db_data.follows.filter(f => f.followerId === u.id).map(f => getUser(f.followingId)).filter(Boolean);
+  return `<div class="wrap"><div class="profile-layout"><div class="profile-sidebar"><div class="profile-sidebar-head"><div style="position:relative;display:inline-block;">${avatarHTML(u, 72)}${isMe && CONFIG.ALLOW_AVATAR_UPLOAD ? `<div class="edit" data-action="change-avatar" title="${esc(t('changeAvatar'))}" style="position:absolute;right:-6px;bottom:-6px;width:22px;height:22px;border-radius:3px;background:#333;color:#fff;display:grid;place-items:center;font-size:10px;border:2px solid #fff;cursor:pointer;">📷</div>` : ''}</div><div class="profile-sidebar-name">${esc(u.name)}</div>${!isMe && me ? `<button class="btn-follow-green ${following?'following':''}" data-action="toggle-follow" data-uid="${u.id}">${following ? esc(t('following')) : '+ ' + esc(t('follow'))}</button>` : ''}<div class="profile-sidebar-stats"><span><b>${posts.length}</b> ${esc(t('posts'))}</span><span><b>${fansCount(u.id)}</b> ${esc(t('fans'))}</span></div></div><div class="profile-sidebar-bio"><div class="label"><span>${esc(t('bio'))}</span>${isMe ? `<span class="edit-bio" data-action="edit-bio">${esc(t('editBio'))}</span>` : ''}</div>${u.bio ? esc(u.bio) : `<span style="color:#bbb">${esc(t('bioEmpty'))}</span>`}</div><div class="profile-sidebar-links"><div class="label">${esc(t('followingCount'))} (${followingUsers.length})</div>${followingUsers.map(f => `<a href="#/u/${f.id}">${esc(f.name)}</a>`).join('') || '—'}</div></div><div class="profile-main">${!isMe && me ? `<div class="ask-box"><div class="ask-box-header">${esc(t('privateAsk', { name: u.name }))}<span class="sub">${esc(t('privateAskSub'))}</span></div><div class="ask-box-body"><textarea class="ask-input" id="profileAskInput" placeholder="${esc(t('askPlaceholder'))}"></textarea><div class="ask-row"><label class="ask-anon"><input type="checkbox" id="profileAskAnon"> ${esc(t('anon'))}</label><button class="ask-submit" id="profileAskSubmit" data-uid="${u.id}">${esc(t('ask'))}</button></div></div></div>` : ''}<div style="font-size:13px;font-weight:700;color:#555;margin:0 0 10px 2px;border-bottom:1px solid #d3dce6;padding-bottom:6px;">${esc(u.name)}'s ${esc(t('posts'))}</div>${posts.length ? posts.map(p => postHTML(p)).join('') : `<div class="empty">${esc(t('noPosts'))}</div>`}</div></div></div>`;
+}
+function renderSearch(kw) {
+  kw = (kw || '').trim().toLowerCase();
+  const list = db_data.users.filter(u => u.name.toLowerCase().includes(kw));
+  return `<div class="wrap"><div class="page-title">Search</div>${list.length ? list.map(u => `<div class="user-row" data-action="open-user" data-uid="${u.id}">${avatarHTML(u, 36)}<div class="user-row-info"><div class="user-row-name">@${esc(u.name)}</div><div class="user-row-sub">${fansCount(u.id)} ${esc(t('fans'))}</div></div></div>`).join('') : `<div class="empty">${esc(t('noSearch'))}</div>`}</div>`;
+}
+function renderTopbar() { const me = currentUser(); if (!me) return; const chip = document.getElementById('userChip'); chip.href = '#/u/' + me.id; chip.innerHTML = avatarHTML(me, 28); const pubBtn = document.querySelector('.nav-tab[data-tab="public"]'); const privBtn = document.querySelector('.nav-tab[data-tab="private"]'); if (pubBtn && privBtn) { pubBtn.classList.toggle('active', homeTab === 'public'); privBtn.classList.toggle('active', homeTab === 'private'); } }
+function render() { if (!isLoggedIn()) { showAuth(); return; } const { parts } = parseRoute(); renderTopbar(); let html; if (parts.length === 0) html = renderHome(); else if (parts[0] === 'u' && parts[1]) html = renderProfile(parts[1]); else if (parts[0] === 'search' && parts[1]) html = renderSearch(parts[1]); else html = renderHome(); document.getElementById('app').innerHTML = html; window.scrollTo(0, 0); }
+
+window.addEventListener('hashchange', () => { expandedPosts.clear(); render(); });
+document.getElementById('searchForm').addEventListener('submit', e => { e.preventDefault(); const kw = document.getElementById('searchInput').value.trim(); if (!kw) return; location.hash = '#/search/' + encodeURIComponent(kw); });
+document.getElementById('langBtn').addEventListener('click', toggleLang);
+document.getElementById('authLangBtn').addEventListener('click', toggleLang);
+
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-action]'); if (!el) return;
+  const action = el.dataset.action;
+  if (action === 'open-user') { go('#/u/' + el.dataset.uid); return; }
+  if (action === 'anon-block') { e.preventDefault(); await infoModal(t('anonBlockTitle'), t('anonBlockMsg')); return; }
+  if (action === 'toggle-follow') {
+    e.preventDefault(); const uid2 = el.dataset.uid; const me = currentUser();
+    const nowFollowing = !isFollowing(uid2);
+    try {
+      if (nowFollowing) { await sb.from('follows').insert({ id: uid('f'), follower_id: me.id, following_id: uid2, ts: Date.now() }); }
+      else { await sb.from('follows').delete().eq('follower_id', me.id).eq('following_id', uid2); }
+      await fetchAll(); toast(nowFollowing ? '✅ ' + t('following') : t('unfollowed')); render();
+    } catch (err) { toast('操作失败'); console.error(err); }
+    return;
+  }
+  if (action === 'switch-tab') { e.preventDefault(); const tab = el.dataset.tab; if (tab === homeTab) return; homeTab = tab; expandedPosts.clear(); if (location.hash && location.hash !== '#/' && location.hash !== '') location.hash = '#/'; else render(); return; }
+  if (action === 'smile-post') {
+    e.preventDefault(); if (el.dataset.self === '1') { toast(t('cannotLikeSelf')); return; }
+    const p = db_data.posts.find(x => x.id === el.dataset.pid); if (!p) return;
+    const me = currentUser(); p.likedBy = p.likedBy || [];
+    const i = p.likedBy.indexOf(me.id);
+    if (i >= 0) { p.likedBy.splice(i,1); p.likes = Math.max(0, (p.likes||0)-1); }
+    else { p.likedBy.push(me.id); p.likes = (p.likes||0)+1; pixelPopover(LANG === 'zh'); }
+    try { await sb.from('posts').update({ likes: p.likes, liked_by: p.likedBy }).eq('id', p.id); } catch (err) { console.error(err); }
+    const wrap = document.querySelector('#post-' + p.id);
+    if (wrap) { const temp = document.createElement('div'); temp.innerHTML = postHTML(p); wrap.replaceWith(temp.firstElementChild); }
+    return;
+  }
+  if (action === 'like-answer') {
+    e.preventDefault();
+    const p = db_data.posts.find(x => x.id === el.dataset.pid); if (!p) return;
+    const a = p.answers.find(x => x.id === el.dataset.aid); if (!a) return;
+    const me = currentUser(); if (me.id === a.userId) { toast(t('cannotLikeSelf')); return; }
+    a.likedBy = a.likedBy || [];
+    const i = a.likedBy.indexOf(me.id);
+    if (i >= 0) { a.likedBy.splice(i,1); a.likes = Math.max(0, (a.likes||0)-1); }
+    else { a.likedBy.push(me.id); a.likes = (a.likes||0)+1; pixelPopover(LANG === 'zh'); }
+    try { await sb.from('posts').update({ answers: p.answers }).eq('id', p.id); } catch (err) { console.error(err); }
+    const wrap = document.querySelector('#post-' + p.id);
+    if (wrap) { const temp = document.createElement('div'); temp.innerHTML = postHTML(p); wrap.replaceWith(temp.firstElementChild); }
+    return;
+  }
+  if (action === 'share-post') { e.preventDefault(); navigator.clipboard?.writeText(location.href).then(() => toast('🔗 Link copied')).catch(() => {}); return; }
+  if (action === 'delete-post') {
+    e.preventDefault();
+    const p = db_data.posts.find(x => x.id === el.dataset.pid); if (!p) return;
+    if (!await confirmModal(t('deletePost'), t('confirmDelete'))) return;
+    try { await sb.from('posts').delete().eq('id', p.id); db_data.posts = db_data.posts.filter(x => x.id !== p.id); toast(t('deleted')); render(); } catch (err) { toast('删除失败'); console.error(err); }
+    return;
+  }
+  if (action === 'expand-post') { expandedPosts.add(el.dataset.pid); render(); return; }
+  if (action === 'collapse-post') { expandedPosts.delete(el.dataset.pid); render(); return; }
+  if (action === 'answer-submit') {
+    e.preventDefault();
+    const pid = el.dataset.pid; const p = db_data.posts.find(x => x.id === pid); if (!p) return;
+    const ta = document.querySelector(`[data-answer-input="${pid}"]`);
+    const txt = ta ? ta.value.trim() : ''; if (!txt) { toast(t('answerEmpty')); return; }
+    const me = currentUser();
+    if (p.isPublic) { if (me.id === p.askedBy) { toast(t('cannotLikeSelf')); return; } if (p.answers.some(a => a.userId === me.id)) { toast(t('alreadyAnsweredByMe')); return; } }
+    else { if (me.id !== p.userId) { toast(t('pleaseLoginFirst')); return; } if (p.answers.some(a => a.userId === me.id)) { toast(t('alreadyAnsweredByMe')); return; } }
+    p.answers.push({ id: uid('a'), userId: me.id, content: txt, ts: Date.now(), likes: 0, likedBy: [] });
+    try { await sb.from('posts').update({ answers: p.answers }).eq('id', p.id); toast(t('answerPublished')); render(); } catch (err) { toast('发布失败'); console.error(err); }
+    return;
+  }
+  if (action === 'change-avatar') { e.preventDefault(); if (!CONFIG.ALLOW_AVATAR_UPLOAD) { toast('头像上传已关闭'); return; } pickAvatar(); return; }
+  if (action === 'edit-bio') {
+    e.preventDefault();
+    const me = currentUser(); if (!me) return;
+    const v = await bioEditModal(me.bio || '');
+    if (v === null) return;
+    try { await sb.from('user_profiles').update({ bio: v }).eq('id', me.id); me.bio = v; localStorage.setItem('askme_user', JSON.stringify(me)); render(); toast(t('bioUpdated')); } catch (err) { toast('保存失败'); console.error(err); }
+    return;
+  }
+});
+
+document.addEventListener('click', async e => {
+  if (e.target.id === 'homeAskSubmit') {
+    const me = currentUser(); if (!me) return;
+    const q = document.getElementById('homeAskInput')?.value.trim(); if (!q) { toast(t('postEmpty')); return; }
+    const anon = document.getElementById('homeAskAnon').checked;
+    const post = { id: uid('p'), is_public: true, user_id: me.id, question: q, asked_by: anon ? null : me.id, anonymous: anon, ts: Date.now(), likes: 0, liked_by: [], answers: [] };
+    try { await sb.from('posts').insert(post); await fetchAll(); toast(t('postPublished')); render(); } catch (err) { toast('发布失败'); console.error(err); }
+  }
+  if (e.target.id === 'profileAskSubmit') {
+    const me = currentUser(); if (!me) { toast(t('pleaseLoginFirst')); return; }
+    const targetUid = e.target.dataset.uid; if (targetUid === me.id) { toast(t('cannotLikeSelf')); return; }
+    const q = document.getElementById('profileAskInput')?.value.trim(); if (!q) { toast(t('postEmpty')); return; }
+    const anon = document.getElementById('profileAskAnon').checked;
+    const post = { id: uid('p'), is_public: false, user_id: targetUid, question: q, asked_by: anon ? null : me.id, anonymous: anon, ts: Date.now(), likes: 0, liked_by: [], answers: [] };
+    try { await sb.from('posts').insert(post); await fetchAll(); toast(t('postPublished')); render(); } catch (err) { toast('发布失败'); console.error(err); }
+  }
+});
+
+function pickAvatar() {
+  const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
+  input.onchange = async () => {
+    const f = input.files && input.files[0]; if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { toast('≤ 2MB'); return; }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const me = currentUser(); me.avatar = reader.result;
+      try { await sb.from('user_profiles').update({ avatar: me.avatar }).eq('id', me.id); localStorage.setItem('askme_user', JSON.stringify(me)); render(); toast(t('avatarUpdated')); } catch (err) { toast('保存失败'); console.error(err); }
+    };
+    reader.readAsDataURL(f);
+  };
+  input.click();
+}
+
+async function init() {
+  if (!location.hash) location.hash = '#/';
+  applyLang();
+  const saved = localStorage.getItem('askme_user');
+  if (saved) {
+    try { currentUser_ = JSON.parse(saved); await fetchAll(); showApp(); render(); return; } catch (e) { console.error('恢复登录失败', e); localStorage.removeItem('askme_user'); }
+  }
+  showAuth();
+}
+init();
+</script>
+</body>
+</html>
